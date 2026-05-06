@@ -30,4 +30,22 @@ RUN set -eux; \
     sed -ri 's/^export APACHE_RUN_USER=.*/export APACHE_RUN_USER=www-data/' /etc/apache2/envvars; \
     sed -ri 's/^export APACHE_RUN_GROUP=.*/export APACHE_RUN_GROUP=www-data/' /etc/apache2/envvars
 
+RUN set -eux; \
+    cat > /etc/apache2/sites-available/000-default.conf <<'EOF'
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html
+
+    <Directory /var/www/html>
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF
+
 WORKDIR /var/www/html
