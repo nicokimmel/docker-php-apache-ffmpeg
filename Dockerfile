@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo_mysql mysqli \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
+    && a2enmod rewrite headers expires deflate filter setenvif \
     && rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
