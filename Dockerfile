@@ -1,8 +1,10 @@
-FROM php:7.2-apache
+FROM php:7.2-apache-buster
 
-# Fix outdated Debian sources
-RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
-    sed -i 's/security.debian.org/archive.debian.org/g' /etc/apt/sources.list
+RUN set -eux; \
+    sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list; \
+    sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list; \
+    sed -i '/buster-updates/d' /etc/apt/sources.list; \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
 # Install dependencies, ImageMagick, PHP extensions
 RUN apt-get update && apt-get install -y \
@@ -21,3 +23,11 @@ RUN apt-get update && apt-get install -y \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
     && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    groupmod -o -g 1000 www-data; \
+    usermod  -o -u 1000 -g 1000 www-data; \
+    sed -ri 's/^export APACHE_RUN_USER=.*/export APACHE_RUN_USER=www-data/' /etc/apache2/envvars; \
+    sed -ri 's/^export APACHE_RUN_GROUP=.*/export APACHE_RUN_GROUP=www-data/' /etc/apache2/envvars
+
+WORKDIR /var/www/html
