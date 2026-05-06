@@ -6,7 +6,6 @@ RUN set -eux; \
     sed -i '/buster-updates/d' /etc/apt/sources.list; \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
-# Install dependencies, ImageMagick, PHP extensions
 RUN apt-get update && apt-get install -y \
         ffmpeg \
         cron \
