@@ -8,7 +8,6 @@ RUN set -eux; \
 
 RUN apt-get update && apt-get install -y \
         ffmpeg \
-        cron \
         libonig-dev \
         libzip-dev \
         libpng-dev \
