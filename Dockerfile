@@ -47,4 +47,13 @@ RUN set -eux; \
 </VirtualHost>
 EOF
 
+RUN { \
+        echo "memory_limit=1024M"; \
+        echo "max_execution_time=240"; \
+        echo "max_input_vars=1500"; \
+        echo "upload_max_filesize=512M"; \
+        echo "post_max_size=512M"; \
+        echo "date.timezone=Europe/Berlin"; \
+    } > /usr/local/etc/php/conf.d/ffmpeg.ini
+
 WORKDIR /var/www/html
