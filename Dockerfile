@@ -35,6 +35,8 @@ RUN set -eux; \
     ServerAdmin webmaster@localhost
     DocumentRoot /var/www/html
 
+    SetEnvIf X-Forwarded-Proto "https" HTTPS=on
+
     <Directory /var/www/html>
         Options FollowSymLinks
         AllowOverride All
