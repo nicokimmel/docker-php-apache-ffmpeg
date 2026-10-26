@@ -1,0 +1,18 @@
+{
+  "php": "7.2",
+  "kind": "ffmpeg",
+  "minimum_package": "7.2.34-66+0~20261021.122+debian13~1.gbpe0bcd4",
+  "document_root": "/var/www/html",
+  "uid": 1000,
+  "rewrite": true,
+  "forwarded_https": true,
+  "cron": false,
+  "settings": {
+    "memory_limit": "2048M",
+    "max_execution_time": "240",
+    "max_input_vars": "1500",
+    "upload_max_filesize": "2048M",
+    "post_max_size": "2048M",
+    "timezone": "Europe/Berlin"
+  }
+}

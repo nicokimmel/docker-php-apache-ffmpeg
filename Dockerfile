@@ -1,61 +1,66 @@
-FROM php:7.2-apache-buster
+FROM debian:trixie-slim
 
+# Sury supplies backports for the EOL PHP branches. Trust only its dedicated keyring.
 RUN set -eux; \
-    sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list; \
-    sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list; \
-    sed -i '/buster-updates/d' /etc/apt/sources.list; \
-    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl; \
+    curl -fsSL --retry 3 https://packages.sury.org/debsuryorg-archive-keyring.deb -o /tmp/sury-keyring.deb; \
+    dpkg -i /tmp/sury-keyring.deb; \
+    rm /tmp/sury-keyring.deb; \
+    echo 'deb [signed-by=/usr/share/keyrings/debsuryorg-archive-keyring.gpg] https://packages.sury.org/php/ trixie main' > /etc/apt/sources.list.d/php.list; \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y \
+# These revisions contain the backport for CVE-2026-109618 and CVE-2026-109619.
+# Check the Debian package version: PHP_VERSION alone does not identify backports.
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        apache2 \
+        ca-certificates \
+        curl \
+        libapache2-mod-php7.2 \
+        php7.2-cli \
+        php7.2-common \
+        php7.2-curl \
+        php7.2-json \
+        php7.2-mbstring \
+        php7.2-mysql \
+        php7.2-opcache \
+        php7.2-readline \
+        php7.2-sqlite3 \
+        php7.2-xml \
+        php7.2-imagick \
         ffmpeg \
-        libonig-dev \
-        libzip-dev \
-        libpng-dev \
-        libjpeg-dev \
-        libfreetype6-dev \
-        mariadb-client \
         imagemagick \
-        libmagickwand-dev \
-        --no-install-recommends \
-    && docker-php-ext-install pdo_mysql mysqli \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick \
-    && a2enmod rewrite headers expires deflate filter setenvif \
-    && rm -rf /var/lib/apt/lists/*
+        mariadb-client; \
+    for package in php7.2-cli php7.2-common libapache2-mod-php7.2; do \
+        installed="$(dpkg-query -W -f='${Version}' "$package")"; \
+        dpkg --compare-versions "$installed" ge '7.2.34-66+0~20261021.122+debian13~1.gbpe0bcd4'; \
+    done; \
+    a2dismod mpm_event; \
+    a2enmod mpm_prefork php7.2 rewrite headers expires deflate filter setenvif; \
+    rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
     groupmod -o -g 1000 www-data; \
-    usermod  -o -u 1000 -g 1000 www-data; \
-    sed -ri 's/^export APACHE_RUN_USER=.*/export APACHE_RUN_USER=www-data/' /etc/apache2/envvars; \
-    sed -ri 's/^export APACHE_RUN_GROUP=.*/export APACHE_RUN_GROUP=www-data/' /etc/apache2/envvars
+    usermod -o -u 1000 -g 1000 www-data; \
+    chown www-data:www-data /var/lib/php/sessions
+
+COPY docker/apache-site.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/php.ini /etc/php/7.2/mods-available/application.ini
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN set -eux; \
-    cat > /etc/apache2/sites-available/000-default.conf <<'EOF'
-<VirtualHost *:80>
-    ServerAdmin webmaster@localhost
-    DocumentRoot /var/www/html
-
-    SetEnvIf X-Forwarded-Proto "https" HTTPS=on
-
-    <Directory /var/www/html>
-        Options FollowSymLinks
-        AllowOverride All
-        Require all granted
-        DirectoryIndex index.php index.html
-    </Directory>
-
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>
-EOF
-
-RUN { \
-        echo "memory_limit=2048M"; \
-        echo "max_execution_time=240"; \
-        echo "max_input_vars=1500"; \
-        echo "upload_max_filesize=2048M"; \
-        echo "post_max_size=2048M"; \
-        echo "date.timezone=Europe/Berlin"; \
-    } > /usr/local/etc/php/conf.d/ffmpeg.ini
+    phpenmod -v 7.2 -s ALL application; \
+    chmod +x /usr/local/bin/docker-entrypoint.sh; \
+    mkdir -p /var/www/html; \
+    rm -f /var/www/html/index.html; \
+    ln -sf /proc/self/fd/1 /var/log/apache2/access.log; \
+    ln -sf /proc/self/fd/1 /var/log/apache2/other_vhosts_access.log; \
+    ln -sf /proc/self/fd/2 /var/log/apache2/error.log
 
 WORKDIR /var/www/html
+EXPOSE 80
+STOPSIGNAL SIGWINCH
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["apache2-foreground"]

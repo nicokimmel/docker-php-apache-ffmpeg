@@ -1,33 +1,40 @@
-name: Build and Push Docker Image
+name: Build, Test and Push Docker Image
 
 on:
   push:
     branches:
       - '**'
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Build Docker Image
+        run: docker build --pull --no-cache -t local/php-apache:test .
+
+      - name: Test Docker Image
+        run: python3 tests/smoke.py local/php-apache:test
+
       - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker Image
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/${GITHUB_REPOSITORY#*/}:${GITHUB_REF_NAME//\//-} .
-
       - name: Push Docker Image
+        if: github.event_name != 'pull_request'
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/${GITHUB_REPOSITORY#*/}:${GITHUB_REF_NAME//\//-}
+          tag=${GITHUB_REF_NAME//\//-}
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:$tag"
+          docker tag local/php-apache:test "$image"
+          docker push "$image"
