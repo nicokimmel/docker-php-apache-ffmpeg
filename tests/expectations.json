@@ -1,0 +1,11 @@
+{
+  "php": "7.2",
+  "kind": "ffmpeg",
+  "minimum_package": "7.2.34-66+0~20261021.122+debian13~1.gbpe0bcd4",
+  "document_root": "/var/www/html",
+  "uid": 33,
+  "rewrite": false,
+  "forwarded_https": false,
+  "cron": true,
+  "settings": {}
+}
